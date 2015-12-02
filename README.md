@@ -1,4 +1,5 @@
 # mathTool
+python2.7   需要第三方模块：numpy,matplotlib
 
 这是由数值分析第一次上机实验制作的GUI。功能如下：
 
