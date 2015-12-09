@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -6,8 +7,399 @@ import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2TkAgg
 import threading,Queue
+
+
+class Singleton(type):
+    '''This class is a meta class, which helps to create singleton class.'''
+    def __call__(self, *args, **kwargs):
+        if hasattr(self, 'instance'):
+            return self.instance
+        else:
+            self.instance = object.__new__(self)
+            # In this circumstance, the __init__ should be called explicitly.
+            self.__init__(self.instance, *args, **kwargs)
+            return self.instance
+       
+    def delInstance(self):
+        if hasattr(self,'instance'):
+            del self.instance
+class showDichotomy(object):
+    __metaclass__ = Singleton
+    def __init__(self,parent,*args,**kwargs):
+        self.args   = [0,1] if 'args'   not in kwargs else kwargs.pop('args')
+        self.parent = parent
+        self.queueText = Queue.Queue(10)
+        self.observerList = []
+        title = '二分法'
+        message = ("条件：求解区间单调\n"
+                    "优点：方法简单，对函数f(x)要求低，绝对收敛\n"
+                    "缺点：收敛速度慢，不能求偶数重根")
+        arange = '[-2,3]'
+        
+        self.topLevel = Toplevel(self.parent)
+        self.topLevel.title(title)
+        self.topLevel.protocol('WM_DELETE_WINDOW',self.deleteAll)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = X,expand = 0,side = TOP)
+        
+        Label(frame,text = message,justify = 'left',relief = 'raised').pack(fill = X,expand = 0,)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = X,expand = 0,side = TOP)
+        Label(frame,text = '区间选择').grid(row=0,column=0)
+        self.entry_arange = Entry(frame,justify = 'center')
+        self.entry_arange.insert(0,arange)
+        self.entry_arange.grid(row=0,column=1)
+        button = ttk.Button(frame,text = '开始求解',command = self.Search)
+        button.grid(row = 0,column=2)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = BOTH,expand = 1,side = TOP)
+        self.text = Text(frame,width = 5,height = 5)
+        scroll = Scrollbar(frame,command = self.text.yview)
+        self.text.configure(yscrollcommand = scroll.set)
+        
+        self.text.pack(side = LEFT,fill = BOTH,expand = 1)
+        scroll.pack(side = LEFT,fill = Y,expand =0)
+        self.showText()
+    def addObserver(self,observer):
+        self.observerList.append(observer)
+    def deleteAll(self):
+        #self.__metaclass__.delInstance()
+        self.topLevel.destroy()
+        for observer in self.observerList:
+            observer.deleteSingle()
+
+        
+        
+    def Search(self,):
+        arange = eval(self.entry_arange.get())
+        args = self.args
+        
+        fun = self._dichotomy
+       
+                   
+        t = threading.Thread(target=fun,args=(arange,args))
+        t.setDaemon(False)
+        t.start()
+
+    '''二分法'''
+    def _dichotomy(self,arange,args):
+        t = dichotomy(arange = arange,args = args)
+        t.find0point()
+        s = t.getMessage()
+        self.queueText.put(s)
+        
+    def showText(self):
+        if self.queueText.empty() == False:
+            s = self.queueText.get_nowait()
+            try:
+                self.text.insert(END,s)
+                self.text.yview_moveto(1)
+            except:
+                pass
+            
+        self.parent.after(500,self.showText)
+class showNewtonFuction(object):
+    __metaclass__ = Singleton
+    def __init__(self,parent,*args,**kwargs):
+        self.args   = [0,1] if 'args'   not in kwargs else kwargs.pop('args')
+        self.parent = parent
+        self.queueText = Queue.Queue(10)
+        self.observerList = []
+        title = 'Newton迭代'
+        message = ("优点：方法简单，收敛快，可求重根、复根\n"
+                    "缺点：每一步需要计算导数值")
+        arange = '0.5'
+        
+        self.topLevel = Toplevel(self.parent)
+        self.topLevel.title(title)
+        self.topLevel.protocol('WM_DELETE_WINDOW',self.deleteAll)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = X,expand = 0,side = TOP)
+        
+        Label(frame,text = message,justify = 'left',relief = 'raised').pack(fill = X,expand = 0,)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = X,expand = 0,side = TOP)
+        Label(frame,text = '区间选择').grid(row=0,column=0)
+        self.entry_arange = Entry(frame,justify = 'center')
+        self.entry_arange.insert(0,arange)
+        self.entry_arange.grid(row=0,column=1)
+        button = ttk.Button(frame,text = '开始求解',command = self.Search)
+        button.grid(row = 0,column=2)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = BOTH,expand = 1,side = TOP)
+        self.text = Text(frame,width = 5,height = 5)
+        scroll = Scrollbar(frame,command = self.text.yview)
+        self.text.configure(yscrollcommand = scroll.set)
+        
+        self.text.pack(side = LEFT,fill = BOTH,expand = 1)
+        scroll.pack(side = LEFT,fill = Y,expand =0)
+        self.showText()
+    def addObserver(self,observer):
+        self.observerList.append(observer)
+    def deleteAll(self):
+        #self.__metaclass__.delInstance()
+        self.topLevel.destroy()
+        for observer in self.observerList:
+            observer.deleteSingle()
+
+        
+        
+    def Search(self,):
+        arange = eval(self.entry_arange.get())
+        args = self.args
+        
+        fun = self._newtonFuction
+       
+                   
+        t = threading.Thread(target=fun,args=(arange,args))
+        t.setDaemon(False)
+        t.start()
+
+    '''牛顿迭代法'''
+    def _newtonFuction(self,arange,args):
+        t = newtonFuction(arange = arange,args = args)
+        t.find0point()
+        s = t.getMessage()
+        self.queueText.put(s)
+        
+    def showText(self):
+        if self.queueText.empty() == False:
+            s = self.queueText.get_nowait()
+            try:
+                self.text.insert(END,s)
+                self.text.yview_moveto(1)
+            except:
+                pass
+            
+        self.parent.after(500,self.showText)
+class showCutLine(object):
+    __metaclass__ = Singleton
+    def __init__(self,parent,*args,**kwargs):
+        self.args   = [0,1] if 'args'   not in kwargs else kwargs.pop('args')
+        self.parent = parent
+        self.queueText = Queue.Queue(10)
+        self.observerList = []
+        title = '割线法'
+        message = ("优点：避免了求导数\n"
+                    "缺点：收敛速度比Newton法慢")
+        arange = '[0,1]'
+    
+        self.topLevel = Toplevel(self.parent)
+        self.topLevel.title(title)
+        self.topLevel.protocol('WM_DELETE_WINDOW',self.deleteAll)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = X,expand = 0,side = TOP)
+        
+        Label(frame,text = message,justify = 'left',relief = 'raised').pack(fill = X,expand = 0,)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = X,expand = 0,side = TOP)
+        Label(frame,text = '区间选择').grid(row=0,column=0)
+        self.entry_arange = Entry(frame,justify = 'center')
+        self.entry_arange.insert(0,arange)
+        self.entry_arange.grid(row=0,column=1)
+        button = ttk.Button(frame,text = '开始求解',command = self.Search)
+        button.grid(row = 0,column=2)
+        frame = Frame(self.topLevel)
+        frame.pack(fill = BOTH,expand = 1,side = TOP)
+        self.text = Text(frame,width = 5,height = 5)
+        scroll = Scrollbar(frame,command = self.text.yview)
+        self.text.configure(yscrollcommand = scroll.set)
+        
+        self.text.pack(side = LEFT,fill = BOTH,expand = 1)
+        scroll.pack(side = LEFT,fill = Y,expand =0)
+        self.showText()
+    def addObserver(self,observer):
+        self.observerList.append(observer)
+    def deleteAll(self):
+        #self.__metaclass__.delInstance()
+        self.topLevel.destroy()
+        for observer in self.observerList:
+            observer.deleteSingle()
+
+        
+        
+    def Search(self,):
+        arange = eval(self.entry_arange.get())
+        args = self.args
+        
+        fun = self._cutLine
+       
+                   
+        t = threading.Thread(target=fun,args=(arange,args))
+        t.setDaemon(False)
+        t.start()
+
+    '''割线法'''
+    def _cutLine(self,arange,args):
+        t = cutLine(arange = arange,args = args)
+        t.find0point()
+        s = t.getMessage()
+        self.queueText.put(s)
+        
+    def showText(self):
+        if self.queueText.empty() == False:
+            s = self.queueText.get_nowait()
+            try:
+                self.text.insert(END,s)
+                self.text.yview_moveto(1)
+            except:
+                pass
+            
+        self.parent.after(500,self.showText)
+        
+        
+class dichotomy(object):
+    def __init__(self,*args,**kwargs):
+        self.arange = [0,1] if 'arange' not in kwargs else kwargs.pop('arange')
+        self.args   = [0,1] if 'args'   not in kwargs else kwargs.pop('args')
+        
+        self.messageText = None
+        
+    def find0point(self):
+        def findPoint(x,arg):
+            y = 0.0
+            for i,a in enumerate(arg):
+                y +=np.power(x,i)*a
+            return y
+        y0 = findPoint(self.arange[0],self.args)
+        num = 0
+        s = ''
+        while (num<200):  
+            num += 1                          
+            z = np.average(self.arange)
+            y = findPoint(z,self.args)
+            s  += "标号：%d  取值：%.8f  结果：%.9f\n"%(num,z,y)
+            
+            if 0.0000001 >= abs(self.arange[0]-z) and 1 <= abs(z):
+                break
+            elif 0.00000001 >= abs(self.arange[0]-z) and 1 > abs(z):
+                break
+            else:
+                pass     
+
+            if  0 <= y*y0:
+                self.arange[0] = z
+            else:
+                self.arange[1] = z
+                
+        self.messageText = s
+        
+    def getMessage(self):
+        if self.messageText == None:
+            return 'None'
+        else:
+            return self.messageText
+            
+class newtonFuction(object):
+    def __init__(self,*args,**kwargs):
+        self.arange = 0 if 'arange' not in kwargs else kwargs.pop('arange')
+        self.args   = [0,1] if 'args'   not in kwargs else kwargs.pop('args')
+        
+        self.messageText = None
+        
+    def find0point(self):
+        def derivative(arg):
+            iarg = []
+            for i,a in enumerate(arg):
+                iarg.append(a*i)
+            return iarg[1:]
+        def findPointX(x,arg,iarg):
+            y = 0.0
+            for i,a in enumerate(arg):
+                y += np.power(x,i)*a
+                
+            dy = 0.0
+            for i ,a in enumerate(iarg):
+                dy += np.power(x,i)*a
+                
+            return (x-y/dy)
+            
+        def findPoint(x,arg):
+            y = 0.0
+            for i,a in enumerate(arg):
+                y +=np.power(x,i)*a
+            return y
+            
+        s ,num = '',0
+        while (num<200):
+            num += 1
+            iargs = derivative(self.args)
+            y = findPoint(self.arange,self.args)
+            s  += "标号：%d  取值：%.8f  结果：%.9f\n"%(num,self.arange,y)
+            
+            arange1 = findPointX(self.arange,self.args,iargs)
+            
+            if 0.0000001 >= abs(self.arange-arange1) and 1 <= abs(arange1):
+                break
+            elif 0.00000001 >= abs(self.arange-arange1) and 1 > abs(arange1):
+                break
+            else:
+                self.arange = arange1
+                
+                
+        self.messageText = s
+        
+    def getMessage(self):
+        if self.messageText == None:
+            return 'None'
+        else:
+            return self.messageText
+        
+class cutLine(object):
+    def __init__(self,*args,**kwargs):
+        self.arange = 0 if 'arange' not in kwargs else kwargs.pop('arange')
+        self.args   = [0,1] if 'args'   not in kwargs else kwargs.pop('args')
+        
+        self.messageText = None
+        
+    def find0point(self):
+        def findPointX(arange,arg):
+            y0 , y = 0.0,0.0
+            x0 , x = arange
+            for i,a in enumerate(arg):
+                y += np.power(x,i)*a
+                y0 += np.power(x0,i)*a
+                
+            
+            
+                
+            return [x,x-(x-x0)*y/(y-y0)]
+        def findPoint(x,arg):
+            y = 0.0
+            for i,a in enumerate(arg):
+                y +=np.power(x,i)*a
+            return y
+        s ,num = '',0
+        while (num<200):
+            num += 1
+
+            y = findPoint(self.arange[1],self.args)
+            s  += "标号：%d  取值：%.8f  结果：%.9f\n"%(num,self.arange[1],y)
+            
+            self.arange = findPointX(self.arange,self.args)
+            
+            if 0.0000001 >= abs(self.arange[0] - self.arange[1]) and 1 <= abs(self.arange[1]):
+                break
+            elif 0.00000001 >= abs(self.arange[0]-self.arange[1]) and 1 > abs(self.arange[1]):
+                break
+            else:
+                pass      
+                
+                
+        self.messageText = s
+        
+    def getMessage(self):
+        if self.messageText == None:
+            return 'None'
+        else:
+            return self.messageText   
+        
+        
+                    
+     
 class math(object):
     def __init__(self,parent,*args,**kwargs):
+        
         self.parent = parent
         frameToolbar = Frame(self.parent)
         frameToolbar.pack(fill = X,expand = 0,side = TOP)
@@ -43,16 +435,27 @@ class math(object):
         filemenu = Menu(menubar,tearoff =0)
         filemenu.add_command(label = '二分法',command = lambda:self.solve(1))
         filemenu.add_separator()
-        filemenu.add_command(label = 'Newton迭代',command = lambda:self.solve(2))
+        filemenu.add_command(label = '牛顿迭代法',command = lambda:self.solve(2))
         filemenu.add_separator()
         filemenu.add_command(label = '割线法',command = lambda:self.solve(3))
-      
+     
         menubar.add_cascade(label = '求解方程',menu = filemenu)
+
         self.parent.configure(menu = menubar)
         
         self.queueText = Queue.Queue(10)
         
-
+    def observer(self,subject):
+        self.subject = subject
+        self.subject.addObserver(self)
+        
+    def deleteSingle(self,):
+        showDichotomy.delInstance()
+        showNewtonFuction.delInstance()
+        showCutLine.delInstance()
+        
+        
+        
     def showPlot(self):
         self.start ,self.stop  = float(self.entry_start.get()),float(self.entry_stop.get())
         self.args = eval(self.entry_args.get())
@@ -68,183 +471,17 @@ class math(object):
         self.canvas.show()
         
     def solve(self,style):
-        if style == 1:
-            title = '二分法'
-            message = ("条件：求解区间单调\n"
-                        "优点：方法简单，对函数f(x)要求低，绝对收敛\n"
-                        "缺点：收敛速度慢，不能求偶数重根")
-            arange = '[-2,3]'
-        elif style == 2:
-            title = 'Newton迭代'
-            message = ("优点：方法简单，收敛快，可求重根、复根\n"
-                        "缺点：每一步需要计算导数值")
-            arange = '0.5'
-        else:
-            title = '割线法'
-            message = ("优点：避免了求导数\n"
-                        "缺点：收敛速度比Newton法慢")
-            arange = '[0,1]'
-            
-            
-                    
-        topLevel = Toplevel(self.parent)
-        topLevel.title(title)
-        frame = Frame(topLevel)
-        frame.pack(fill = X,expand = 0,side = TOP)
-        
-        Label(frame,text = message,justify = 'left',relief = 'raised').pack(fill = X,expand = 0,)
-        frame = Frame(topLevel)
-        frame.pack(fill = X,expand = 0,side = TOP)
-        Label(frame,text = '区间选择').grid(row=0,column=0)
-        self.entry_arange = Entry(frame,justify = 'center')
-        self.entry_arange.insert(0,arange)
-        self.entry_arange.grid(row=0,column=1)
-        button = ttk.Button(frame,text = '开始求解',command = lambda:self.Search(style))
-        button.grid(row = 0,column=2)
-        frame = Frame(topLevel)
-        frame.pack(fill = BOTH,expand = 1,side = TOP)
-        self.text = Text(frame,width = 5,height = 5)
-        scroll = Scrollbar(frame,command = self.text.yview)
-        self.text.configure(yscrollcommand = scroll.set)
-        
-        self.text.pack(side = LEFT,fill = BOTH,expand = 1)
-        scroll.pack(side = LEFT,fill = Y,expand =0)
-        self.showText()
-    def showText(self):
-        if self.queueText.empty() == False:
-            s = self.queueText.get_nowait()
-            try:
-                self.text.insert(END,s)
-                self.text.yview_moveto(1)
-            except:
-                pass
-            
-        self.parent.after(500,self.showText)
-        
-    def Search(self,style):
-        arange = eval(self.entry_arange.get())
-        args = eval(self.entry_args.get()) 
-        if style == 1:
-            fun = self.dichotomy
-        elif style == 2:
-            fun = self.newtonFuction
-        else:
-            fun = self.cutLine
-                   
-        t = threading.Thread(target=fun,args=(arange,args))
-        t.setDaemon(False)
-        t.start()
-    def dichotomy(self,arange,args):
-        
-        def findPoint(x,arg):
-            y = 0.0
-            for i,a in enumerate(arg):
-                y +=np.power(x,i)*a
-            return y
-            
-        
-        def find0point(_arange,_args):
-            y0 = findPoint(_arange[0],_args)
-            num = 0
-            s = ''
-            while (num<200):  
-                num += 1                          
-                z = np.average(_arange)
-                y = findPoint(z,_args)
-                s  += "标号：%d  取值：%.8f  结果：%.9f\n"%(num,z,y)
-                
-                if 0.0000001 >= abs(_arange[0]-z) and 1 <= abs(z):
-                    break
-                elif 0.00000001 >= abs(_arange[0]-z) and 1 > abs(z):
-                    break
-                else:
-                    pass     
+        args = eval(self.entry_args.get())
+        if style == 1:                        
+            t = showDichotomy(self.parent,args = args)            
+        if style == 2:            
+            t = showNewtonFuction(self.parent,args = args)            
+        if style == 3:            
+            t = showCutLine(self.parent,args = args)
+        self.observer(t)
 
-                if  0 <= y*y0:
-                    _arange[0] = z
-                else:
-                    _arange[1] = z
-                
-                   
-                    
-            self.queueText.put(s)
+   
         
-        find0point(arange,args)
-        
-    def newtonFuction(self,arange,args):
-        def derivative(arg):
-            iarg = []
-            for i,a in enumerate(arg):
-                iarg.append(a*i)
-            return iarg[1:]
-        def findPointX(x,arg,iarg):
-            y = 0.0
-            for i,a in enumerate(arg):
-                y += np.power(x,i)*a
-                
-            dy = 0.0
-            for i ,a in enumerate(iarg):
-                dy += np.power(x,i)*a
-                
-            return (x-y/dy)
-        def findPoint(x,arg):
-            y = 0.0
-            for i,a in enumerate(arg):
-                y +=np.power(x,i)*a
-            return y
-        s ,num = '',0
-        while (num<200):
-            num += 1
-            iargs = derivative(args)
-            y = findPoint(arange,args)
-            s  += "标号：%d  取值：%.8f  结果：%.9f\n"%(num,arange,y)
-            
-            arange1 = findPointX(arange,args,iargs)
-            
-            if 0.0000001 >= abs(arange-arange1) and 1 <= abs(arange1):
-                break
-            elif 0.00000001 >= abs(arange-arange1) and 1 > abs(arange1):
-                break
-            else:
-                arange = arange1
-                
-                
-        self.queueText.put(s)
-    def cutLine(self,arange,args):
-        
-        def findPointX(arange,arg):
-            y0 , y = 0.0,0.0
-            x0 , x = arange
-            for i,a in enumerate(arg):
-                y += np.power(x,i)*a
-                y0 += np.power(x0,i)*a
-                
-            
-            
-                
-            return [x,x-(x-x0)*y/(y-y0)]
-        def findPoint(x,arg):
-            y = 0.0
-            for i,a in enumerate(arg):
-                y +=np.power(x,i)*a
-            return y
-        s ,num = '',0
-        while (num<200):
-            num += 1
-
-            y = findPoint(arange[1],args)
-            s  += "标号：%d  取值：%.8f  结果：%.9f\n"%(num,arange[1],y)
-            
-            arange = findPointX(arange,args)
-            
-            if 0.0000001 >= abs(arange[0] - arange[1]) and 1 <= abs(arange[1]):
-                break
-            elif 0.00000001 >= abs(arange[0]-arange[1]) and 1 > abs(arange[1]):
-                break
-            else:
-                pass           
-            
-        self.queueText.put(s)
 
 
 if __name__ == "__main__":        
