@@ -438,8 +438,11 @@ class math(object):
         filemenu.add_command(label = '牛顿迭代法',command = lambda:self.solve(2))
         filemenu.add_separator()
         filemenu.add_command(label = '割线法',command = lambda:self.solve(3))
-     
-        menubar.add_cascade(label = '求解方程',menu = filemenu)
+        
+        filemenu2 = Menu(menubar,tearoff =0)
+        filemenu2.add_command(label = '列选主元素消元',command = self.solveXi)
+        menubar.add_cascade(label = '求解零点',menu = filemenu)
+        menubar.add_cascade(label = '求解方程组',menu = filemenu2)
 
         self.parent.configure(menu = menubar)
         
@@ -479,8 +482,117 @@ class math(object):
         if style == 3:            
             t = showCutLine(self.parent,args = args)
         self.observer(t)
+    def solveXi(self):
+        s = showColumnSelect(self.parent)
 
-   
+class columnSelect(object):
+    def __init__(self,*args,**kwargs):
+        self.args   = [0,1] if 'args'   not in kwargs else kwargs.pop('args')        
+        self.messageText = None        
+    def solve(self):
+        n = len(self.args)
+        s = ''
+        for k in range(n-1):
+            #选取最大值
+            a = []
+            for j in range(k,n):
+                a.append(self.args[j][k])
+            num = a.index(max(a))
+            self.args[k] ,self.args[k+num] = self.args[k+num],self.args[k]
+            #消元求解                        
+            for i in range(k+1,n):
+                d = self.args[i][k]/self.args[k][k]
+                for z in range(k,n+1):
+                    self.args[i][z] = self.args[i][z] - self.args[k][z]*d
+            
+            s +='%d\n'%(k+1)
+            for o in range(n):
+                for p in range(n+1):
+                    s += '%.4f  '%self.args[o][p]
+                s += '\n'
+        #求解各个值
+        answer = [0]*(n+1)
+        for i in range(n-1,-1,-1):
+            add = 0
+            for j in range(n,i,-1):
+                add += answer[j]*self.args[i][j]
+                
+            answer[i] = (self.args[i][-1]-add)/self.args[i][i]
+            
+
+        self.messageText = s
+        for i in range(n):
+            self.messageText += 'x%d = %.4f\n'%(i+1,answer[i])
+        
+        
+    def getMessage(self):
+        if self.messageText == None:
+            return 'None'
+        else:
+            return self.messageText      
+class showColumnSelect(object):
+    def __init__(self,parent):
+        self.parent  = parent
+        self.queueText = Queue.Queue(10)
+        toplevel = Toplevel(self.parent)
+        toplevel.title('列选主元素消元法')
+        frame = Frame(toplevel)
+        frame.pack(fill = BOTH,expand = 1)
+        frameTop = Frame(frame)
+        frameTop.pack(fill = BOTH,expand = 1)
+        ttk.Button(frameTop,text = '求解',command = self.solveProm).pack()
+        frameDown = Frame(frame)
+        frameDown.pack(fill = BOTH,expand = 1)
+        frameL = Frame(frameDown)
+        frameR = Frame(frameDown)
+        frameL.pack(side = LEFT,fill = BOTH,expand = 1)
+        frameR.pack(side = LEFT,fill = BOTH,expand = 1)
+        Label(frameL,text = '输入系数').pack(fill = X,expand = 0)
+        Label(frameR,text = '求解输出').pack(fill = X,expand = 0)
+        self.text1 = Text(frameL,width = 20)
+        self.text2 = Text(frameR,width = 20)
+        
+        self.text1.insert(END,'[3.2,19.5,3.4,-4.5][5.9]\n[1.3,-2.6,13.4,4.1][8.3]\n[15.2,1.9,-4.8,-2.2][-1.3]\n[4.3,2.7,2.4,16.5][7.2]')
+        
+        self.text1.pack(fill= BOTH,expand = 1)
+        self.text2.pack(fill= BOTH,expand = 1)
+        
+        self.showText()
+        
+    def solveProm(self):
+        args = self.text1.get(0.0,END)
+        #self.text1.
+        args = args.replace('][',',')
+        args = args.replace('\n',',')
+        args = eval(args)
+        args = np.array(args)
+        args = args.astype(np.float)
+        
+        fun = self._columnSelect
+       
+                   
+        t = threading.Thread(target=fun,args=(args,))
+        t.setDaemon(False)
+        t.start()
+        
+    def _columnSelect(self,args):
+        c = columnSelect(args = args.tolist())
+        c.solve()
+        s = c.getMessage()
+        
+        self.queueText.put(s)
+        
+    def showText(self):
+        if self.queueText.empty() == False:
+            s = self.queueText.get_nowait()
+            try:
+                self.text2.insert(END,s)
+                self.text2.yview_moveto(1)
+            except:
+                pass
+            
+        self.parent.after(500,self.showText)
+        
         
 
 
